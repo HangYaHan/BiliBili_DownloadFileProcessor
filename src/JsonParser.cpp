@@ -1,33 +1,55 @@
 #include "JsonParser.h"
+
 #include <fstream>
 #include <iostream>
 #include <locale>
 #include <codecvt>
+#include <windows.h>
 
-bool JsonParser::getValueByKey(const std::string& filename, const std::string& key, std::string& value) {
-    // 以UTF-8模式读取
-    std::ifstream file(filename);
-    if (!file.is_open()) {
-        std::cerr << "Failed to open file: " << filename << std::endl;
+#include <rapidjson/document.h>
+#include <rapidjson/filereadstream.h>
+
+bool JsonParser::getValueByKey(const std::string &filename, const std::string &key, std::string &value)
+{
+    rapidjson::Document document;
+    FILE *fp = fopen(filename.c_str(), "r");
+    if (fp == nullptr)
+    {
+        perror("Failed to open file");
         return false;
     }
-    std::string jsonContent((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-    size_t keyPos = jsonContent.find("\"" + key + "\"");
-    if (keyPos == std::string::npos) {
-        std::cerr << "Failed to find key: " << key << std::endl;
+
+    char readBuffer[65536];
+    rapidjson::FileReadStream is(fp, readBuffer, sizeof(readBuffer));
+    document.ParseStream(is);
+
+    if (document.HasMember(key.c_str()))
+    {
+        value = document[key.c_str()].GetString();
+    }
+    else
+    {
+        std::cerr << "Key not found or invalid type." << std::endl;
+        fclose(fp);
         return false;
     }
-    size_t colonPos = jsonContent.find(":", keyPos);
-    if (colonPos == std::string::npos) {
-        std::cerr << "Failed to find colon after key: " << key << std::endl;
+
+    fclose(fp);
+    return true;
+}
+
+bool JsonParser::convertToWString(const std::string &str, std::wstring &wstr)
+{
+    int wlen = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, NULL, 0);
+    if (wlen <= 0)
+    {
+        wstr.clear();
         return false;
     }
-    size_t valueStart = jsonContent.find("\"", colonPos + 1);
-    size_t valueEnd = jsonContent.find("\"", valueStart + 1);
-    if (valueStart == std::string::npos || valueEnd == std::string::npos) {
-        std::cerr << "Failed to find value for key: " << key << std::endl;
-        return false;
-    }
-    value = jsonContent.substr(valueStart + 1, valueEnd - valueStart - 1);
+    std::wstring result(wlen, 0);
+    MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, &result[0], wlen);
+    if (!result.empty() && result.back() == L'\0')
+        result.pop_back();
+    wstr = result;
     return true;
 }

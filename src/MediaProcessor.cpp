@@ -1,43 +1,79 @@
 #include "MediaProcessor.h"
 #include <fstream>
 #include <iostream>
+#include <windows.h>
+#include <filesystem>
 
-bool MediaProcessor::processM4sToMp4(const std::string& m4sFile, const std::string& outputName, const std::string& targetPath) {
+bool MediaProcessor::processM4sToMp4(const std::string &m4sFile, const std::wstring &outputName, const std::string &targetPath)
+{
     std::ifstream inputFile(m4sFile, std::ios::binary);
-    if (!inputFile.is_open()) {
+    if (!inputFile.is_open())
+    {
         std::cerr << "Error opening file: " << m4sFile << std::endl;
         return false;
     }
-    std::string newFilename = targetPath + outputName + ".mp4";
-    std::ofstream outputFile(newFilename, std::ios::binary);
-    if (!outputFile.is_open()) {
-        std::cerr << "Error creating output file: " << newFilename << std::endl;
+    // 1. 检查并补全路径分隔符
+    std::string fixedTargetPath = targetPath;
+    if (!fixedTargetPath.empty() && fixedTargetPath.back() != '\\' && fixedTargetPath.back() != '/')
+    {
+        fixedTargetPath += "\\";
+    }
+    // 2. 过滤文件名非法字符
+    std::wstring safeName = outputName;
+    for (auto &ch : safeName)
+    {
+        if (ch == L'/' || ch == L'\\' || ch == L':' || ch == L'*' || ch == L'?' || ch == L'"' || ch == L'<' || ch == L'>' || ch == L'|')
+        {
+            ch = L'_';
+        }
+    }
+    // 3. 自动创建目标目录
+    try
+    {
+        std::filesystem::create_directories(fixedTargetPath);
+    }
+    catch (...)
+    {
+        std::wcerr << L"Failed to create output directory: " << std::wstring(fixedTargetPath.begin(), fixedTargetPath.end()) << std::endl;
+        return false;
+    }
+    // 2. 用std::filesystem::path拼接路径
+    std::filesystem::path dir(targetPath);
+    std::filesystem::create_directories(dir);
+    std::filesystem::path file = dir / (safeName + L".mp4");
+    // 3. 用_wfopen支持中文路径
+    FILE *fp = _wfopen(file.native().c_str(), L"wb");
+    if (!fp)
+    {
+        std::wcerr << L"Error creating output file: " << file.native() << std::endl;
         return false;
     }
     inputFile.seekg(9, std::ios::beg);
     char buffer[1024];
-    while (inputFile.read(buffer, sizeof(buffer))) {
-        outputFile.write(buffer, inputFile.gcount());
+    while (inputFile.read(buffer, sizeof(buffer)))
+    {
+        fwrite(buffer, 1, inputFile.gcount(), fp);
     }
-    outputFile.write(buffer, inputFile.gcount());
-    std::cout << "File processed successfully: " << newFilename << std::endl;
+    fwrite(buffer, 1, inputFile.gcount(), fp);
+    fclose(fp);
     return true;
 }
 
-bool MediaProcessor::convertMp4ToMp3(const std::string& mp4File, const std::string& mp3File) {
-    // 这里建议用ffmpeg等外部库实现，暂留空实现
-    std::cerr << "convertMp4ToMp3 not implemented. Please use ffmpeg or similar tool." << std::endl;
+bool MediaProcessor::judgeKeyM4S(const std::string &m4s1, const std::string &m4s2, std::string &key)
+{
+    for (const auto &suffix : file_suffix_list)
+    {
+        if (m4s1.find(suffix) != std::string::npos)
+        {
+            key = m4s1;
+            return true;
+        }
+        if (m4s2.find(suffix) != std::string::npos)
+        {
+            key = m4s2;
+            return true;
+        }
+    }
+    std::cerr << "Neither file contains any of the specified suffixes in the name." << std::endl;
     return false;
-}
-
-bool MediaProcessor::judgeKeyMp4(const std::string& m4s1, const std::string& m4s2, std::string& key) {
-    if (m4s1.find("30280") != std::string::npos) {
-        key = m4s1;
-    } else if (m4s2.find("30280") != std::string::npos) {
-        key = m4s2;
-    } else {
-        std::cerr << "Neither file contains '30280' in the name." << std::endl;
-        return false;
-    }
-    return true;
 }
