@@ -34,7 +34,7 @@ A naive app to process download files from BiliBili app and turns them into avai
    > If you already have FFmpeg installed, just copy `ffmpeg.exe` (and any required .dll files) to the `ffmpeg` directory. For details, see the **Usage** section below.
 
 ## Usage
-I strongly recommend you to see the video tutorial first: [video tutorial](https://www.example.com)
+I strongly recommend you to see the video tutorial first: [https://www.example.com](https://www.example.com) (Not available now)
 
 1. Place the executable `BiliBili_DownloadFileProcessor.exe` and the folder `ffmpeg` to **the Bilibili download directory**. Please ensure the `ffmpeg` folder contains `ffmpeg.exe`, and don't forget any required .dll files if there are any.
 2. Run the executable file **BiliBili_DownloadFileProcessor.exe**, it will automatically process all relevant files in the directory. (**ffmpeg.exe** is dependence, must be in the same directory and don't run it.)
