@@ -1,7 +1,6 @@
 #include "FileManager.h"
 #include "JsonParser.h"
 #include "MediaProcessor.h"
-#include "ThreadUtils.h"
 #include "Config.h"
 
 #include <iostream>
@@ -11,36 +10,8 @@
 #include <fcntl.h>
 #include <io.h>
 
-#define DEBUG 1
-#define TEST 0
 #define OUTPUT_PATH ".\\Result\\"
 #define KEY_TITLE "title"
-
-#if TEST
-
-int main()
-{
-    _setmode(_fileno(stdout), _O_U16TEXT);
-    JsonParser parser;
-    const std::string test_json = ".\\32379047573\\videoInfo.json";
-    std::string title_utf8;
-
-    if (JsonParser::getValueByKey(test_json, "title", title_utf8))
-    {
-        std::wstring wtitle;
-        if (JsonParser::convertToWString(title_utf8, wtitle))
-        {
-            std::wcout << L"Title: " << wtitle << std::endl;
-        }
-        else
-        {
-            std::wcerr << L"Failed to convert UTF-8 to wstring." << std::endl;
-        }
-    }
-    return 0;
-}
-
-#else
 
 int main()
 {
@@ -138,7 +109,7 @@ int main()
 
     std::wcout << L"All folders processed. Preparing for MP3 conversion..." << std::endl;
     std::wcout << L"This procedure may take some time, please wait patiently..." << std::endl;
-    for (int i = 5; i > 0; --i)
+    for (int i = 3; i > 0; --i)
     {
         std::wcout << L"\r                                        \r";
         std::wcout << L"MP3 conversion will start in: " << i << L" seconds..." << std::flush;
@@ -158,7 +129,7 @@ int main()
         mp3_path.replace_extension(".mp3");
 
         // Construct ffmpeg command using local ffmpeg.exe
-        std::wstring ffmpeg_cmd = L".\\Depends\\ffmpeg.exe -y -i \"";
+        std::wstring ffmpeg_cmd = L".\\ffmpeg\\ffmpeg.exe -y -i \"";
         ffmpeg_cmd += mp4_path.wstring();
         ffmpeg_cmd += L"\" -vn -acodec libmp3lame -q:a 2 \"";
         ffmpeg_cmd += mp3_path.wstring();
@@ -173,6 +144,21 @@ int main()
         }
     }
 
+    // Cleanup temporary files
+    for (const auto &mp4_file : mp4_files)
+    {
+        try
+        {
+            std::filesystem::remove(mp4_file);
+        }
+        catch (const std::filesystem::filesystem_error &e)
+        {
+            std::wcerr << L"Failed to delete temporary file: " << std::filesystem::path(mp4_file).wstring()
+                       << L". Error: " << e.what() << std::endl;
+        }
+    }
+
+
     system("cls");
     std::wcout << L"Checklist:" << std::endl;
     std::wcout << L" ----------------------------" << std::endl;
@@ -184,5 +170,3 @@ int main()
     std::wcin.get();
     return 0;
 }
-
-#endif

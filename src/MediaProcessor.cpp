@@ -12,13 +12,13 @@ bool MediaProcessor::processM4sToMp4(const std::string &m4sFile, const std::wstr
         std::cerr << "Error opening file: " << m4sFile << std::endl;
         return false;
     }
-    // 1. 检查并补全路径分隔符
+    // Check and fix path separators
     std::string fixedTargetPath = targetPath;
     if (!fixedTargetPath.empty() && fixedTargetPath.back() != '\\' && fixedTargetPath.back() != '/')
     {
         fixedTargetPath += "\\";
     }
-    // 2. 过滤文件名非法字符
+    // deal with illegal characters in outputName
     std::wstring safeName = outputName;
     for (auto &ch : safeName)
     {
@@ -27,7 +27,7 @@ bool MediaProcessor::processM4sToMp4(const std::string &m4sFile, const std::wstr
             ch = L'_';
         }
     }
-    // 3. 自动创建目标目录
+    // create output directory if it doesn't exist
     try
     {
         std::filesystem::create_directories(fixedTargetPath);
@@ -37,11 +37,13 @@ bool MediaProcessor::processM4sToMp4(const std::string &m4sFile, const std::wstr
         std::wcerr << L"Failed to create output directory: " << std::wstring(fixedTargetPath.begin(), fixedTargetPath.end()) << std::endl;
         return false;
     }
-    // 2. 用std::filesystem::path拼接路径
+
+    // using std::filesystem to construct paths and filenames
     std::filesystem::path dir(targetPath);
     std::filesystem::create_directories(dir);
     std::filesystem::path file = dir / (safeName + L".mp4");
-    // 3. 用_wfopen支持中文路径
+
+    // wfopen for binary write, chinese characters supported
     FILE *fp = _wfopen(file.native().c_str(), L"wb");
     if (!fp)
     {
